@@ -31,34 +31,29 @@ export const registerWithEmail = createUserWithEmailAndPassword;
 export const signInWithEmail = signInWithEmailAndPassword;
 export const logout = signOut;
 
-// Reference to the specific sensor data path in the database
-const measurementsRef = ref(database, 'mediciones/ESP32_Sensor_01/');
-
 /**
- * Listens for real-time updates from the Firebase Realtime Database.
+ * Listens for real-time updates from a specific sensor node in the Firebase Realtime Database.
+ * @param nodeId - The ID of the sensor node to listen to (e.g., "Esclavo_01").
  * @param callback - The function to call with the new data.
  * @returns An unsubscribe function to clean up the listener.
  */
-export const listenToRealtimeMeasurements = (callback: (data: FirebaseData) => void): (() => void) => {
+export const listenToRealtimeMeasurements = (nodeId: string, callback: (data: FirebaseData) => void): (() => void) => {
+  // Reference to the specific sensor data path in the database
+  const measurementsRef = ref(database, `mediciones/${nodeId}`);
+
   const listener = onValue(
     measurementsRef,
     (snapshot: DataSnapshot) => {
       const data = snapshot.val();
-      if (data) {
-        callback(data);
-      } else {
-        // If there's no data at the path, send an empty object
-        callback({});
-      }
+      callback(data || {});
     },
     (error) => {
-      console.error("Firebase read failed: ", error);
-      // If there's an error (e.g., permissions), send an empty object
+      console.error(`Firebase read failed for node ${nodeId}: `, error);
       callback({});
     }
   );
 
-  // Return an unsubscribe function to be called on component unmount to prevent memory leaks
+  // Return an unsubscribe function to be called on component unmount
   return () => {
     off(measurementsRef, 'value', listener);
   };
